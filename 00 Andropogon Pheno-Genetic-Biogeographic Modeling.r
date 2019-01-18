@@ -1,6 +1,6 @@
 ### ANDROPOGON PHENO-GENETIC-BIOGEOGRAPHICAL MODELING
 ### Adam B Smith | Missouri Botanical Garden | 2018
-### source('C:/Ecology/Drive/Research/Andropogon/Andropogon - Pheno-geno Modeling/Code/00 Andropogon Pheno-Genetic-Biogeographic Modeling V3.r')
+### source('C:/Ecology/Drive/Research/Andropogon/Andropogon - Pheno-geno Modeling/Code/00 Andropogon Pheno-Genetic-Biogeographic Modeling.r')
 
 	print(Sys.time())
 	rm(list=ls())
@@ -25,9 +25,14 @@
 ### add populations to spatial polygon of species occurrences ###
 
 ### model species distribution using bayesLopod ###
-### model SNPs ###
+### model future distribution of species from bayesLopod output ###
+### map bayesLopod present and future prediction ###
 
+### model SNPs ###
 ### assess SNP model performance and sensitivity to predictors ###
+### EDA of SNP model performance and predictor importance ###
+### identify alleles most likely affected by climate ###
+### make maps of alleles most likely responding to climate ###
 
 
 # ### copy and process raw response data ###
@@ -75,15 +80,14 @@
 
 	phenoVars <- c('height_cm', 'leafWidth_cm', 'biomass_g', 'spad')
 
-	bioclims <- c(1, 2, 5, 7, 12)
+	bioclims <- c(1, 12)
 	# predictors <- c('bio02', 'bio05', 'bio07', 'bio12', 'solarRadiation')
 	predictors <- c('bio01', 'bio12')
 			
 	ll <- c('longitude', 'latitude')
-			
-	# # # # names of candidate loci
-	# # # loci <- c('S1_2050023', 'S1_27189028', 'S1_33964042', 'S1_73120031')
 
+	rcps <- c('4pt5', '8pt5')
+	
 #################
 ### functions ###
 #################
@@ -92,6 +96,7 @@
 	stackCurrentEnv <- function(predictors) {
 	
 		# predictors	character vector of predictors matching raster file names
+
 		env <- raster(paste0('./Data/WORLDCLIM Ver 2 Rel June 1 2016/1970-2000/', predictors[1], '.tif'))
 		
 		if (length(predictors) > 1) {
@@ -99,6 +104,36 @@
 		}
 		
 		env
+	
+	}
+
+	# stack environmental rasters
+	stackFutureEnv <- function(predictors, rcp) {
+	
+		# predictors	character vector of predictors matching raster file names
+		# rcp			RCP in format as per '4pt5'
+	
+		gcms <- read.csv('./Data/WORLDCLIM Ver 1pt4 Rel 3/GCMs.csv')
+		gcms <- gcms$gcm
+		allEnv <- list()
+
+		for (gcm in gcms) {
+		
+			env <- raster(paste0('./Data/WORLDCLIM Ver 1pt4 Rel 3/RCP ', rcp, ' ', gcm, ' 2061 to 2080/', predictors[1], '.tif'))
+			
+			if (length(predictors) > 1) {
+				env <- stack(env, paste0('./Data/WORLDCLIM Ver 1pt4 Rel 3/RCP ', rcp, ' ', gcm, ' 2061 to 2080/', predictors[2:length(predictors)], '.tif'))
+			}
+			
+			allEnv[[length(allEnv) + 1]] <- env
+			name <- gsub(gcm, pattern='-', replacement='')
+			name <- gsub(name, pattern='!', replacement='')
+			name <- tolower(name)
+			names(allEnv)[length(allEnv)] <- name
+			
+		}
+		
+		allEnv
 	
 	}
 
@@ -321,16 +356,44 @@
 			
 		# }
 		
-		# ### SOLAR RADIATION
-		# ###################
+	# ### future climate
+	# ##################
+	
+	# gcmInfo <- read.csv('D:/Ecology/Climate/WORLDCLIM Ver 1pt4 Rel 3/GCM Names, Scenarios Modeled, and File Codes.csv')
+	# gcmsInEns <- read.csv('D:/Ecology/Climate/WORLDCLIM Ver 1pt4 Rel 3/10 arcmin/RCP4pt5 - 10 arcmin/2041 to 2060 - 10 arcmin - RCP4pt5 - !ENSEMBLE/!GCMs Used in Ensemble.csv')
+	# gcms <- c(gcmsInEns[ , 2])
+	# gcms <- c('!ENSEMBLE', gcms)
+	
+	# write.csv(data.frame(gcm=gcms), './Data/WORLDCLIM Ver 1pt4 Rel 3/GCMs.csv', row.names=FALSE)
+	
+	# for (rcp in rcps) {
+
+		# for (gcm in gcms) {
+	
+			# outDir <- paste0('./Data/WORLDCLIM Ver 1pt4 Rel 3/RCP ', rcp, ' ', gcm, ' 2061 to 2080')
+			# dirCreate(outDir)
 		
-		# srad <- raster::stack(listFiles('D:/ecology/Climate/WORLDCLIM Ver 2 Rel June 1 2016/10 arcmin 1970 to 2000', pattern='srad'))
-		# rast <- sum(srad)
-		# rast <- crop(rast, mask)
-		# rast <- rast * mask
-		# rast <- setMinMax(rast)
-		# names(rast) <- 'solarRadiation'
-		# writeRaster(rast, paste0('./Data/WORLDCLIM Ver 2 Rel June 1 2016/1970-2000/solarRadiation'))
+			# rcpShort <- gsub(rcp, pattern='pt', replacement='')
+			# gcmCode <- tolower(gcmInfo$code[gcmInfo$gcm == gcm])
+			
+			# say(rcp, ' ', gcm)
+	
+			# for (bio in bioclims) {
+		
+				# rast <- raster(paste0('D:/Ecology/Climate/WORLDCLIM Ver 1pt4 Rel 3/10 arcmin/RCP', rcp, ' - 10 arcmin/2061 to 2080 - 10 arcmin - RCP', rcp, ' - ', gcm, '/World/', gcmCode, rcpShort, 'bi70', prefix(bio, 2), '.tif'))
+				# rast <- crop(rast, mask)
+				# rast <- rast * mask
+				# if (bio < 12) rast <- rast / 10
+				# rast <- setMinMax(rast)
+				# names(rast) <- paste0('bio', prefix(bio, 2))
+				# writeRaster(rast, paste0(outDir, '/bio', prefix(bio, 2)))
+				
+			# }
+			
+		# } # next GCM
+	
+	# } # next RCP
+	
 
 # say('#################################################')
 # say('### copy and modify species distribution data ###')
@@ -542,6 +605,199 @@
 	# save(lopodPredictVarP, file=paste0(outDir, '/Prediction - bayesLopod with Variable Detection.RData'))
 	# save(lopodPredictConstantP, file=paste0(outDir, '/Prediction - bayesLopod with Constant Detection.RData'))
 
+# say('###################################################################')
+# say('### model future distribution of species from bayesLopod output ###')
+# say('###################################################################')
+
+	# # generalization
+	# rcp <- '8pt5'
+	# buffSize <- 400 # size of buffer around populations to crop LOPOD shape (in km)
+
+	# # load('./Models - Species/bayesLopod/Prediction - bayesLopod with Constant Detection.Rdata')
+	# load('./Models - Species/bayesLopod/Prediction - bayesLopod with Variable Detection.Rdata')
+	
+	# lopodPredictVarP$freqLocusS1_2050023allele110 <- lopodPredictVarP$freqLocusS1_27189028allele120 <- lopodPredictVarP$freqLocusS1_33964042allele100 <- lopodPredictVarP$freqLocusS1_73120031allele110 <- lopodPredictVarP$geneticSampleSize <- lopodPredictVarP$sampEffort <- NULL
+	
+	# # crop to Midwest
+	# load('./Data/Phenotypic & Genotypic Data/02 Phenotypic & Genotypic Data - Environmental Data & PCA.RData')
+	# phenoGenoPops <- aggregate(phenoGeno[ , c('population', ll)], by=list(phenoGeno$population), mean)
+	# phenoGenoPops$population <- NULL
+	# names(phenoGenoPops)[1] <- 'population'
+	# nas <- naRows(phenoGenoPops[ , ll])
+	# if (length(nas) > 0) phenoGenoPops <- phenoGenoPops[-nas, ]
+	# phenoGenoPops <- SpatialPointsDataFrame(phenoGenoPops[ , ll], data=phenoGenoPops, proj4string=getCRS('wgs84', TRUE))
+	# phenoGenoPopsEa <- sp::spTransform(phenoGenoPops, getCRS('albersNA', TRUE))
+	# focus <- gBuffer(phenoGenoPopsEa, width=buffSize * 1000)
+	# focus <- sp::spTransform(focus, getCRS('wgs84', TRUE))
+	# focus <- extent(focus)
+	# focus <- as(focus, 'SpatialPolygons')
+	# projection(focus) <- getCRS('wgs84')
+	# lopodPredictVarP <- crop(lopodPredictVarP, focus)	
+	
+	# # setup for modeling
+	# resp <- logitAdj(lopodPredictVarP@data[ , 'psi_i'], epsilon=0)
+	# wc01 <- scale(lopodPredictVarP@data[ , 'wc01'])
+	# wc12 <- scale(lopodPredictVarP@data[ , 'wc12'])
+	# weight <- log10(lopodPredictVarP@data$areaKm2)
+	# weight <- weight - min(weight) + 0.001 * diff(range(weight))
+	
+	# data <- data.frame(resp=resp, wc01=wc01, wc12=wc12, weight=weight)
+	
+	# model <- trainGlm(data=data, resp='resp', preds=c('wc01', 'wc12'), w='weight', family='gaussian')
+	
+	# center <- c(attr(wc01, 'scaled:center'), attr(wc12, 'scaled:center'))
+	# scale <- c(attr(wc01, 'scaled:scale'), attr(wc12, 'scaled:scale'))
+
+	# ### predict to future
+	# env <- stackFutureEnv(predictors=c('bio01', 'bio12'), rcp=rcp)
+	# thisEnv <- raster::extract(env[[1]], lopodPredictVarP, fun=mean)
+	# thisEnv <- as.data.frame(thisEnv)
+	# names(thisEnv) <- c('wc01', 'wc12')
+
+	# thisEnv <- scale(thisEnv, center=center, scale=scale)
+	# thisEnv <- as.data.frame(thisEnv)
+	
+	# predictions <- predict(model, thisEnv)
+	# predictions <- probitAdj(predictions, epsilon=0)
+	
+	# psi_ensembleGcm_rcp85_2070s <- data.frame(psi_ensembleGcm_rcp85_2070s=predictions)
+	# lopodPredictVarP@data <- cbind(lopodPredictVarP@data, psi_ensembleGcm_rcp85_2070s)
+	
+	# save(lopodPredictVarP, file='./Models - Species/bayesLopod/Prediction - bayesLopod with Variable Detection with Future Predictions.RData')
+
+# say('####################################################')
+# say('### map bayesLopod present and future prediction ###')
+# say('####################################################')
+	
+	# # generalization
+	# buffSize <- 200 # size of buffer of focal region for plotting in km
+	# thold <- 0.90 # threshold psi above which to highlight a county
+	
+	# # load geno/pheno and GIS data
+	# load('./Study Region/North America Level 1 Sans Alaska.RData')
+	# load('./Data/Phenotypic & Genotypic Data/02 Phenotypic & Genotypic Data - Environmental Data & PCA.RData')
+	# load('./Models - Species/bayesLopod/Prediction - bayesLopod with Variable Detection with Future Predictions.RData')
+
+	# # aggregate geno/pheno data to population
+	# phenoGenoPops <- aggregate(phenoGeno[ , c('population', ll)], by=list(phenoGeno$population), mean)
+	# phenoGenoPops$population <- NULL
+	# names(phenoGenoPops)[1] <- 'population'
+	# nas <- naRows(phenoGenoPops[ , ll])
+	# if (length(nas) > 0) phenoGenoPops <- phenoGenoPops[-nas, ]
+	
+	# phenoGenoPops <- SpatialPointsDataFrame(phenoGenoPops[ , ll], data=phenoGenoPops, proj4string=getCRS('wgs84', TRUE))
+	
+	# # get focal region extent
+	# phenoGenoPopsEa <- sp::spTransform(phenoGenoPops, getCRS('albersNA', TRUE))
+	# focus <- gBuffer(phenoGenoPopsEa, width=buffSize * 1000)
+	# focus <- sp::spTransform(focus, getCRS('wgs84', TRUE))
+	# focus <- extent(focus)
+	# focus <- as(focus, 'SpatialPolygons')
+	# projection(focus) <- getCRS('wgs84')
+	
+	# nam1 <- crop(nam1, focus)
+	# lopodPredictVarP <- crop(lopodPredictVarP, focus)
+	
+	# colors
+	# cols <- colorRampPalette(c('white', 'green4'))
+	# cols <- cols(101)
+	# for (i in seq_along(cols)) cols[i] <- alpha(cols[i], 0.85)
+		
+	# dirCreate('./Figures & Tables/Species Model - Maps')
+
+	# plot
+	# png(paste0('./Figures & Tables/Species Model - Maps/bayesLopod x Linear Model - Present and Future Predictions.png'), width=2 * 1200, height=1000, res=300)
+
+		# par(mfrow=c(1, 2), oma=0.1 * c(1, 8, 1, 32), mai=0.1 * c(1, 1, 1, 1), mar=rep(0, 4))
+
+		# ### present
+		# ###########
+		
+		# preds <- lopodPredictVarP@data$psi_i
+		# preds <- round(100 * preds) + 1
+		# theseCols <- cols[preds]
+		
+		# minPred <- min(preds, na.rm=TRUE)
+		# maxPred <- max(preds, na.rm=TRUE)
+
+		# highQuant <- quantile(lopodPredictVarP@data$psi_i, thold, na.rm=TRUE)
+		# whichCore <- which(lopodPredictVarP@data$psi_i >= highQuant)
+		# highPred <- lopodPredictVarP[whichCore, ]
+		# highPred <- gUnaryUnion(highPred)
+		
+		# plot(lopodPredictVarP, col=theseCols, breaks=minPred:maxPred, border=NA, axes=FALSE, box=FALSE)
+		# plot(highPred, col='darkgreen', border='black', add=TRUE)
+		# plot(nam1, add=TRUE)
+		
+		# cents <- gCentroid(lopodPredictVarP, byid=TRUE)
+		# cents <- cents[lopodPredictVarP@data$anyAg1to3 > 0, ]
+		# points(cents, pch=16, cex=0.2)
+		
+		# # title
+		# usr <- par('usr')
+		# x <- usr[1]
+		# y <- usr[4] - 0.07 * (usr[4] - usr[3])
+		# name <- paste0('a) Current climate')
+		# text(x, y, labels=name, xpd=NA, cex=0.8, pos=4, font=2)
+
+		# ### future
+		# ###########
+		
+		# preds <- lopodPredictVarP@data$psi_ensembleGcm_rcp85_2070s
+		# preds <- round(100 * preds) + 1
+		# theseCols <- cols[preds]
+		
+		# minPred <- min(preds, na.rm=TRUE)
+		# maxPred <- max(preds, na.rm=TRUE)
+		
+		# whichCore <- which(lopodPredictVarP@data$psi_ensembleGcm_rcp85_2070s >= highQuant)
+		# highPred <- lopodPredictVarP[whichCore, ]
+		# highPred <- gUnaryUnion(highPred)
+		
+		# plot(lopodPredictVarP, col=theseCols, breaks=minPred:maxPred, border=NA, axes=FALSE, box=FALSE)
+		# plot(highPred, col='darkgreen', border='black', add=TRUE)
+		# plot(nam1, add=TRUE)
+		
+		# cents <- gCentroid(lopodPredictVarP, byid=TRUE)
+		# cents <- cents[lopodPredictVarP@data$anyAg1to3 > 0, ]
+		# points(cents, pch=16, cex=0.2)
+		
+		# # title
+		# usr <- par('usr')
+		# x <- usr[1]
+		# y <- usr[4] - 0.07 * (usr[4] - usr[3])
+		# name <- paste0('b) Future climate in 2070s under RCP8.5')
+		# text(x, y, labels=name, xpd=NA, cex=0.8, pos=4, font=2)
+		
+		# # legend
+		# labs <- c('0', '0.25', '0.50', '0.75', sprintf('%.2f', round(highQuant, 2)))
+
+		# perc <- 100 * (1 - thold)
+		
+		# legendGrad(
+			# x='right',
+			# inset = -0.1,
+			# vert = TRUE,
+			# width = 0.12,
+			# height = 1,
+			# labels = labs,
+			# labAdj = 0.55,
+			# cex = 0.7,
+			# col = c('white', 'green4'),
+			# border = 'black',
+			# title = 'Occupancy',
+			# titleAdj = c(0.5, 0.925),
+			# adjX = c(0, 0.4),
+			# adjY = c(0.115, 0.77),
+			# boxBg = par('bg'),
+			# boxBorder = NULL,
+			# swatches = list(list(swatchAdjY=c(0.83, 0.885), col='darkgreen', border='black', labels=paste0('Top\n', perc, '%')))
+		# )	
+
+		# title(sub=date(), cex.sub=0.35, line=-1, outer=TRUE)
+		
+	# dev.off()
+	
 # say('##################')
 # say('### model SNPs ###')
 # say('##################')	
@@ -725,6 +981,13 @@
 		# dev <- snpModel$allSitesModel$deviance
 		# nullDev <- snpModel$allSitesModel$null.deviance
 		# pseudoR2 <- (nullDev - dev) / nullDev
+
+		# ### variation in alleles across populations
+		# ###########################################
+		
+		# snpByPop <- snpModel$snpByPop
+		# alleleFreq <- snpByPop$refAllele / rowSums(snpByPop[ , c('refAllele', 'altAllele')])
+		# sdAlleleFreq <- sd(alleleFreq)
 	
 		# ### variable importance
 		# #######################
@@ -865,7 +1128,7 @@
 		# meanAbsLooDiff_0pt975 <- quantile(abs(looDiffs), 0.975)
 			
 		# ### observed frequencies
-		# obsRefAlleleFreq <- sum(snpByPop$refAllele) / (sum(snpByPop$refAllele) + sum(snpByPop$altAllele))
+		# meanRefAlleleFreq <- sum(snpByPop$refAllele) / (sum(snpByPop$refAllele) + sum(snpByPop$altAllele))
 			
 		# ### remember
 		# perform <- rbind(
@@ -875,7 +1138,8 @@
 					# snp=snp,
 					# refBase=snpModel$refBase,
 					# altBase=snpModel$altBase,
-					# obsRefAlleleFreq=obsRefAlleleFreq,
+					# meanRefAlleleFreq=meanRefAlleleFreq,
+					# sdAlleleFreq=sdAlleleFreq,
 					# numPops=nrow(snpModel$snpByPop),
 					# numIndivid=sum(snpByPop$numGeno),
 					# pseudoR2=pseudoR2,
@@ -902,9 +1166,15 @@
 
 	# perform <- read.csv('./Figures & Tables/SNP Models - Summaries/SNP Model Performance and Predictor Importance.csv')
 
-	# png('./Figures & Tables/SNP Models - Summaries/SNP Models - EDA.png', width=1800, height=1200, res=200)
+	# png('./Figures & Tables/SNP Models - Summaries/SNP Models - EDA.png', width=2000, height=1200, res=200)
 		
-		# par(mfrow=c(2, 3))
+		# par(mfrow=c(2, 4))
+		
+		# x <- perform$sdAlleleFreq
+		# x <- na.omit(x)
+		# x <- x[!is.infinite(x)]
+		# hist(x, breaks=seq(0, 1, by=0.025), xlab='SD', main='Standard deviation of\nallelic frequencies\nacross populations')
+		# abline(v=rep(mean(x, na.rm=TRUE), 2), lwd=2, col='firebrick1')
 		
 		# x <- perform$pseudoR2
 		# x <- na.omit(x)
@@ -946,209 +1216,379 @@
 
 	# dev.off()
 
-say('##############################################################')
-say('### make maps of alleles most likely responding to climate ###')
-say('##############################################################')
+# say('########################################################')
+# say('### identify alleles most likely affected by climate ###')
+# say('########################################################')
+	
+	# # generalization
+	# thold <- 0.50 # get alleles that fall within best "thold" percentile
+	
+	# # load model performance data
+	# perform <- read.csv('./Figures & Tables/SNP Models - Summaries/SNP Model Performance and Predictor Importance.csv')
+	
+	# # get alleles most strongly associated with climate
+	# bestAlleles <- perform[
+		# perform$sdAlleleFreq >= 0.1 &
+		# perform$pseudoR2 >= 0.5 &
+		# perform$meanLooDiff >= quantile(perform$meanLooDiff, 0.5 - 0.5 * thold) &
+		# perform$meanLooDiff <= quantile(perform$meanLooDiff, 0.5 + 0.5 * thold) &
+		# perform$meanAbsLooDiff <= quantile(perform$meanAbsLooDiff, thold) & 
+		# (perform$import_bio01 >= 1 - thold |
+		# perform$import_bio12 >= 1 - thold |
+		# perform$import_bio01Xbio12 >= 1 - thold),
+	# ]
 
-	# generalization
-	thold <- 0.25 # get alleles that fall within best "thold" percentile
-	buffSize <- 300 # size of buffer of focal region for plotting in km
-	
-	# load model performance data
-	perform <- read.csv('./Figures & Tables/SNP Models - Summaries/SNP Model Performance and Predictor Importance.csv')
+	# sink('./Figures & Tables/SNP Models - Summaries/SNPs Most Sensitive to Climate.txt', split=TRUE)
+		
+		# # summarize
+		# say('Using threshold of ', thold, ' to define "best" models.')
+		
+		# say('There are ', nrow(bestAlleles), ' alleles most likely responding to climate.')
 
-	# get alleles most strongly associated with climate
-	bestAlleles <- perform[
-		perform$pseudoR2 >= 0.5 &
-		perform$meanLooDiff >= quantile(perform$meanLooDiff, 0.5 - 0.5 * thold) &
-		perform$meanLooDiff <= quantile(perform$meanLooDiff, 0.5 + 0.5 * thold) &
-		perform$meanAbsLooDiff <= quantile(perform$meanAbsLooDiff, thold) & 
-		(perform$import_bio01 >= 1 - thold |
-		perform$import_bio12 >= 1 - thold |
-		perform$import_bio01Xbio12 >= 1 - thold),
-	]
+		# n <- sum(bestAlleles$import_bio01 >= 1 - thold & bestAlleles$import_bio12 < 1 - thold & bestAlleles$import_bio01Xbio12 < 0.75)
+		# say(n , ' alleles sensitive to just BIO01.')
+		
+		# n <- sum(bestAlleles$import_bio01 < 1 - thold & bestAlleles$import_bio12 >= 1 - thold & bestAlleles$import_bio01Xbio12 < 0.75)
+		# say(n , ' alleles sensitive to just BIO12.')
+		
+		# n <- sum(bestAlleles$import_bio01 >= 1 - thold & bestAlleles$import_bio12 >= 1 - thold & bestAlleles$import_bio01Xbio12 < 0.75)
+		# say(n , ' alleles sensitive to BIO01 and BIO12 (but not interaction).')
+		
+		# n <- sum(bestAlleles$import_bio01 < 1 - thold & bestAlleles$import_bio12 < 1 - thold & bestAlleles$import_bio01Xbio12 >= 0.75)
+		# say(n , ' alleles sensitive to interaction between BIO01 and BIO12.')
+		
+	# sink()
+		
+	# write.csv(bestAlleles, './Figures & Tables/SNP Models - Summaries/SNPs Most Sensitive to Climate.csv')
 
-	sink('./Figures & Tables/SNP Models - Summaries/SNPs Most Sensitive to Climate.txt', split=TRUE)
-		
-		# summarize
-		say('Using threshold of ', thold, ' to define "best" models.')
-		
-		say('There are ', nrow(bestAlleles), ' alleles most likely responding to climate.')
+# say('##############################################################')
+# say('### make maps of alleles most likely responding to climate ###')
+# say('##############################################################')
 
-		n <- sum(bestAlleles$import_bio01 >= 1 - thold & bestAlleles$import_bio12 < 1 - thold & bestAlleles$import_bio01Xbio12 < 0.75)
-		say(n , ' alleles sensitive to just BIO01.')
-		
-		n <- sum(bestAlleles$import_bio01 < 1 - thold & bestAlleles$import_bio12 >= 1 - thold & bestAlleles$import_bio01Xbio12 < 0.75)
-		say(n , ' alleles sensitive to just BIO12.')
-		
-		n <- sum(bestAlleles$import_bio01 >= 1 - thold & bestAlleles$import_bio12 >= 1 - thold & bestAlleles$import_bio01Xbio12 < 0.75)
-		say(n , ' alleles sensitive to BIO01 and BIO12 (but not interaction).')
-		
-		n <- sum(bestAlleles$import_bio01 < 1 - thold & bestAlleles$import_bio12 < 1 - thold & bestAlleles$import_bio01Xbio12 >= 0.75)
-		say(n , ' alleles sensitive to interaction between BIO01 and BIO12.')
-		
-	sink()
-		
-	write.csv(bestAlleles, './Figures & Tables/SNP Models - Summaries/SNPs Most Sensitive to Climate.csv')
-print(NON)		
-	# load geno/pheno and GIS data
-	load('./Study Region/North America Level 1 Sans Alaska.RData')
-	load('./Data/Phenotypic & Genotypic Data/02 Phenotypic & Genotypic Data - Environmental Data & PCA.RData')
-	env <- stackCurrentEnv(predictors)
+	# # generalization
+	# buffSize <- 200 # size of buffer of focal region for plotting in km
+	# rcp <- '8pt5' # RCP
+	
+	# bestAlleles <- read.csv('./Figures & Tables/SNP Models - Summaries/SNPs Most Sensitive to Climate.csv')
 
-	# aggregate geno/pheno data to population
-	phenoGenoPops <- aggregate(phenoGeno[ , c('population', ll)], by=list(phenoGeno$population), mean)
-	phenoGenoPops$population <- NULL
-	names(phenoGenoPops)[1] <- 'population'
-	nas <- naRows(phenoGenoPops[ , ll])
-	if (length(nas) > 0) phenoGenoPops <- phenoGenoPops[-nas, ]
-	
-	phenoGenoPops <- SpatialPointsDataFrame(phenoGenoPops[ , ll], data=phenoGenoPops, proj4string=getCRS('wgs84', TRUE))
-	
-	# get focal region extent
-	phenoGenoPopsEa <- sp::spTransform(phenoGenoPops, getCRS('albersNA', TRUE))
-	focus <- gBuffer(phenoGenoPopsEa, width=buffSize * 1000)
-	focus <- sp::spTransform(focus, getCRS('wgs84', TRUE))
-	focus <- extent(focus)
-	focus <- as(focus, 'SpatialPolygons')
-	
-	env <- crop(env, focus)
-	nam1 <- crop(nam1, focus) 
-	
-	cols <- viridis(100)
+	# # load geno/pheno and GIS data
+	# load('./Study Region/North America Level 1 Sans Alaska.RData')
+	# load('./Data/Phenotypic & Genotypic Data/02 Phenotypic & Genotypic Data - Environmental Data & PCA.RData')
+	# sqEnv <- stackCurrentEnv(predictors)
+	# futEnv <- stackFutureEnv(predictors, rcp=rcp)
+	# load('./Models - Species/bayesLopod/Prediction - bayesLopod with Variable Detection with Future Predictions.Rdata')
 
-	dirCreate('./Figures & Tables/SNP Models - Maps')
-
-	for (countSnp in 1:nrow(bestAlleles)) {
+	# # aggregate geno/pheno data to population
+	# phenoGenoPops <- aggregate(phenoGeno[ , c('population', ll)], by=list(phenoGeno$population), mean)
+	# phenoGenoPops$population <- NULL
+	# names(phenoGenoPops)[1] <- 'population'
+	# nas <- naRows(phenoGenoPops[ , ll])
+	# if (length(nas) > 0) phenoGenoPops <- phenoGenoPops[-nas, ]
 	
-		snp <- bestAlleles$snp[countSnp]
-		say(snp)
+	# phenoGenoPops <- SpatialPointsDataFrame(phenoGenoPops[ , ll], data=phenoGenoPops, proj4string=getCRS('wgs84', TRUE))
 	
-		# load model
-		load(paste0('./Models - SNPs/Model for SNP ', snp, '.RData'))
+	# # get focal region extent
+	# phenoGenoPopsEa <- sp::spTransform(phenoGenoPops, getCRS('albersNA', TRUE))
+	# focus <- gBuffer(phenoGenoPopsEa, width=buffSize * 1000)
+	# focus <- sp::spTransform(focus, getCRS('wgs84', TRUE))
+	# focus <- extent(focus)
+	# focus <- as(focus, 'SpatialPolygons')
+	# projection(focus) <- getCRS('wgs84')
 	
-		# rescale
-		predictorMeans <- snpModel$predictorMeans
-		predictorSds <- snpModel$predictorSds
+	# sqEnv <- crop(sqEnv, focus)
+	# futEnv <- lapply(futEnv, crop, y=focus)
+	# nam1 <- crop(nam1, focus)
+	# lopodPredictVarP <- crop(lopodPredictVarP, focus)
+	
+	# # colors
+	# cols <- cividis(101)
+	
+	# cols <- colorRampPalette(c('darkgreen', 'green', 'purple', 'red', 'darkred'))
+	# cols <- colorRampPalette(c('chartreuse', 'purple', 'firebrick3'))
+	# cols <- colorRampPalette(c('darkred', 'goldenrod', 'navyblue'))
+	# cols <- cols(101)
 		
-		thisEnv <- env
-		layerNames <- names(thisEnv)
-		for (pred in predictors) {
-			thisEnv[[pred]] <- (thisEnv[[pred]] - predictorMeans[[pred]]) / predictorSds[[pred]]
-		}
-		names(thisEnv) <- layerNames
-	
-		# predict
-		prediction <- predict(thisEnv, snpModel$allSitesModel, type='response')
-		prediction <- round(100 * prediction)
-		minPred <- minValue(prediction)
-		maxPred <- maxValue(prediction)
-		theseCols <- cols[minPred:maxPred]
-	
-		# get allelic frequencies
-		snpByPop <- snpModel$snpByPop
-		freqRef <- snpByPop$refAllele / rowSums(snpByPop[ , c('refAllele', 'altAllele')])
-		freqAlt <- 1 - freqRef
-	
-		# plot
-		png(paste0('./Figures & Tables/SNP Models - Maps/', snp, '.png'), width=1400, height=1000, res=200)
-
-			par(oma=0 * c(3, 1, 1, 1), mai=0.1 * c(3, 10, 1, 3))
+	# maxUncert <- sd(c(rep(100, 4), rep(0, 5)))
+	# maxUncert <- 5 * round(maxUncert / 5)
 		
-			plot(prediction, col=theseCols, breaks=minPred:maxPred, legend=FALSE, axes=FALSE, box=FALSE)
-			plot(nam1, add=TRUE)
+	# colsUncert <- colorRampPalette(c('gray80', 'red'))
+	# colsUncert <- colsUncert(maxUncert)
+
+	# dirCreate('./Figures & Tables/SNP Models - Maps')
+
+	# ### by SNP
+	# for (countSnp in 1:nrow(bestAlleles)) {
+	# # for (countSnp in 1) {
+	
+		# snp <- bestAlleles$snp[countSnp]
+		# say(snp)
+	
+		# # load model
+		# load(paste0('./Models - SNPs/Model for SNP ', snp, '.RData'))
+	
+		# # rescale
+		# predictorMeans <- snpModel$predictorMeans
+		# predictorSds <- snpModel$predictorSds
+		
+		# thisSqEnv <- sqEnv
+		# layerNames <- names(thisSqEnv)
+		# for (pred in predictors) {
+			# thisSqEnv[[pred]] <- (thisSqEnv[[pred]] - predictorMeans[[pred]]) / predictorSds[[pred]]
+		# }
+		# names(thisSqEnv) <- layerNames
+	
+		# thisFutEnv <- futEnv
+		# for (gcm in names(thisFutEnv)) {
+			# for (pred in predictors) {
+				# thisFutEnv[[gcm]][[pred]] <- (thisFutEnv[[gcm]][[pred]] - predictorMeans[[pred]]) / predictorSds[[pred]]
+			# }
+			# names(thisFutEnv[[gcm]]) <- layerNames
+		# }
+	
+		# ### current predict
+		# sqPrediction <- predict(thisSqEnv, snpModel$allSitesModel, type='response')
+		# sqPrediction <- round(100 * sqPrediction)
+		# minPredSq <- minValue(sqPrediction)
+		# maxPredSq <- maxValue(sqPrediction)
+		# theseColsSq <- cols[(1 + minPredSq):(1 + maxPredSq)]
+	
+		# ### future predict
+		# futPredictionList <- lapply(thisFutEnv, predict, model=snpModel$allSitesModel, type='response')
+		# futPrediction <- futPredictionList[[1]]
+		# for (i in 2:length(futPredictionList)) futPrediction <- stack(futPrediction, futPredictionList[[i]])
+		# names(futPrediction) <- names(futPredictionList)
+		
+		# futPredictionMean <- mean(futPrediction)
+		# futPredictionMean <- round(100 * futPredictionMean)
+		
+		# minPredFut <- min(minValue(futPredictionMean))
+		# maxPredFut <- max(maxValue(futPredictionMean))
+		# theseColsFut <- cols[(1 + minPredFut):(1 + maxPredFut)]
+	
+		# # uncertainty around future
+		# futUncertain <- calc(futPrediction, sd)
+		# futUncertain <- round(100 * futUncertain)
+		# maxPredUncert <- cellStats(futUncertain, 'max')
+		# theseColsUncert <- colsUncert[1:(1 + maxPredUncert)]
+	
+		# # get allelic frequencies
+		# snpByPop <- snpModel$snpByPop
+		# freqRef <- snpByPop$refAllele / rowSums(snpByPop[ , c('refAllele', 'altAllele')])
+		# freqAlt <- 1 - freqRef
+	
+		# # plot
+		# png(paste0('./Figures & Tables/SNP Models - Maps/', snp, '.png'), width=3 * 1200, height=1000, res=300)
+
+			# par(mfrow=c(1, 3), oma=0.1 * c(4, 8, 1, 1), mai=0.1 * c(1, 1, 1, 1))
+
+			# ### present
+			# ###########
 			
-			# add populations
-			for (countPop in 1:nrow(snpByPop)) {
+			# plot(sqPrediction, col=theseColsSq, breaks=minPredSq:maxPredSq, legend=FALSE, axes=FALSE, box=FALSE)
+			# plot(lopodPredictVarP, col=alpha('white', 1 - lopodPredictVarP$psi_i), border=NA, add=TRUE)
+			# plot(nam1, add=TRUE)
+			
+			# # add populations
+			# for (countPop in 1:nrow(snpByPop)) {
 
-				# freqs <- c(snpByPop$refAllele[countPop], snpByPop$altAllele[countPop])
-				# popCol <- c(cols[length(cols)], cols[1])
-				# pies(freqs, add=TRUE, xPos=snpByPop[countPop, ll[1]], yPos=snpByPop[countPop, ll[2]], col=popCol, radius=0.4)
+				# freqRef <- snpByPop$refAllele[countPop] / (snpByPop$refAllele[countPop] + snpByPop$altAllele[countPop])
+				# popCol <- cols[round(100 * freqRef)]
+				# points(x=snpByPop[countPop, ll[1]], y=snpByPop[countPop, ll[2]], pch=21, bg=popCol, cex=1.2)
 				
-				freqRef <- snpByPop$refAllele[countPop] / (snpByPop$refAllele[countPop] + snpByPop$altAllele[countPop])
-				popCol <- cols[round(100 * freqRef)]
-				points(x=snpByPop[countPop, ll[1]], y=snpByPop[countPop, ll[2]], pch=21, bg=popCol, cex=1.2)
-				
-			}
+			# }
 			
-			# title
-			usr <- par('usr')
-			x <- usr[1]
-			y <- usr[4] - 0.06 * (usr[4] - usr[3])
-			underscore <- regexpr(snp, pattern='_')
-			snpName <- substr(snp, 5, underscore[1] - 1)
-			snpName <- paste('SNP', snpName)
-			text(x, y, labels=snpName, xpd=NA, cex=1, pos=4, font=2)
+			# # title
+			# usr <- par('usr')
+			# x <- usr[1]
+			# y <- usr[4] - 0.02 * (usr[4] - usr[3])
+			# underscore <- regexpr(snp, pattern='_')
+			# snpName <- substr(snp, 5, underscore[1] - 1)
+			# snpName <- paste0('a) SNP ', snpName, ': Current Climate')
+			# text(x, y, labels=snpName, xpd=NA, cex=1.1, pos=4, font=2)
 			
-			# legend
-			refBase <- snpModel$refBase
-			altBase <- snpModel$altBase
+			# # legend
+			# refBase <- snpModel$refBase
+			# altBase <- snpModel$altBase
 		
-			labs <- c(
-				paste0(refBase, ': 100%'),
-				paste0(refBase, ': 50% / ', altBase, ': 50%'),
-				paste0(altBase, ': 100%')
-			)
+			# labs <- c(
+				# paste0('100% ', refBase),
+				# paste0('50% ', refBase, ' / 50% ', altBase),
+				# paste0('100% ', altBase)
+			# )
 		
-			legendGrad(
-				x='bottom',
-				y = NULL,
-				inset = -0.02,
-				vert = FALSE,
-				width = 1,
-				height = 0.1,
-				labels = labs,
-				labAdj = -0.5,
-				cex = 0.7,
-				col = rev(cols),
-				border = 'black',
-				title = '',
-				titleAdj = c(0.5, 0.9),
-				adjX = c(0, 1),
-				adjY = c(0.8, 1),
-				boxBg = par('bg'),
-				boxBorder = NULL,
-				swatches = NULL
-			)	
+			# legendGrad(
+				# x='bottom',
+				# y = NULL,
+				# inset = -0.1,
+				# vert = FALSE,
+				# width = 0.999,
+				# height = 0.15,
+				# labels = labs,
+				# labAdj = -0.33,
+				# cex = 0.9,
+				# col = rev(cols),
+				# border = 'black',
+				# title = '',
+				# titleAdj = c(0.5, 0.9),
+				# adjX = c(0, 1),
+				# adjY = c(0.8, 1),
+				# boxBg = par('bg'),
+				# boxBorder = NULL,
+				# swatches = NULL
+			# )	
 
-			# stats
-			allele <- perform[perform$snp == snp, ]
+			# # stats
+			# allele <- perform[perform$snp == snp, ]
 
-			lab <- paste0('Pseudo-R2: ', sprintf('%.2f', allele$pseudoR2), '\n')
-			lab <- paste0(lab, 'MAD (LOO): ', sprintf('%.2f', allele$meanAbsLooDiff), '\n')
+			# lab <- paste0('Pseudo-R2: ', sprintf('%.2f', allele$pseudoR2), '\n')
+			# lab <- paste0(lab, 'MAD (LOO): ', sprintf('%.2f', allele$meanAbsLooDiff), '\n')
 			
-			imports <- names(allele)[which(grepl(names(allele), pattern='import_'))]
-			importsMean <- imports[-which(grepl(imports, pattern='_0pt025') | grepl(imports, pattern='_0pt975'))]
-			importsLower <- imports[which(grepl(imports, pattern='_0pt025'))]
-			importsUpper <- imports[which(grepl(imports, pattern='_0pt975'))]
+			# imports <- names(allele)[which(grepl(names(allele), pattern='import_'))]
+			# importsMean <- imports[-which(grepl(imports, pattern='_0pt025') | grepl(imports, pattern='_0pt975'))]
+			# importsLower <- imports[which(grepl(imports, pattern='_0pt025'))]
+			# importsUpper <- imports[which(grepl(imports, pattern='_0pt975'))]
 			
-			for (i in seq_along(importsMean)) {
+			# for (i in seq_along(importsMean)) {
 			
-				thisImport <- importsMean[i]
-				thisImportSimple <- gsub(thisImport, pattern='import_', replacement='')
-				nice <- predNice(thisImportSimple)$nice
+				# thisImport <- importsMean[i]
+				# thisImportSimple <- gsub(thisImport, pattern='import_', replacement='')
+				# nice <- predNice(thisImportSimple)$nice
 				
-				meanVal <- sprintf('%.2f', allele[ , thisImport])
-				lowVal <- sprintf('%.2f', allele[ , paste0(thisImport, '_0pt025')])
-				highVal <- sprintf('%.2f', allele[ , paste0(thisImport, '_0pt975')])
+				# meanVal <- sprintf('%.2f', allele[ , thisImport])
+				# lowVal <- sprintf('%.2f', allele[ , paste0(thisImport, '_0pt025')])
+				# highVal <- sprintf('%.2f', allele[ , paste0(thisImport, '_0pt975')])
 				
-				thisLab <- paste0('Importance of ', nice, ': ', meanVal, ' (', lowVal, ' - ', highVal, ')\n')
+				# thisLab <- paste0('Importance of ', nice, ': ', meanVal, ' (', lowVal, ' - ', highVal, ')\n')
 				
-				lab <- paste0(lab, thisLab)
+				# lab <- paste0(lab, thisLab)
 				
-			}
+			# }
 			
-			text(usr[1], usr[3] + 0.15 * (usr[4] - usr[3]), labels=lab, xpd=NA, cex=0.6, pos=4, font=1)
+			# text(usr[1], usr[3] + 0.125 * (usr[4] - usr[3]), labels=lab, xpd=NA, cex=0.67, pos=4, font=2)
 			
+			# ### future
+			# ###########
 			
-			title(sub=date(), cex.sub=0.45, line=0.5)
+			# plot(futPredictionMean, col=theseColsFut, breaks=minPredFut:maxPredFut, legend=FALSE, axes=FALSE, box=FALSE)
+			# plot(lopodPredictVarP, col=alpha('white', 1 - lopodPredictVarP$psi_ensembleGcm_rcp85_2070s), border=NA, add=TRUE)
+			# plot(nam1, add=TRUE)
 			
-		dev.off()
+			# # add populations
+			# for (countPop in 1:nrow(snpByPop)) {
 
-	} # next allelle
+				# freqRef <- snpByPop$refAllele[countPop] / (snpByPop$refAllele[countPop] + snpByPop$altAllele[countPop])
+				# popCol <- cols[round(100 * freqRef)]
+				# points(x=snpByPop[countPop, ll[1]], y=snpByPop[countPop, ll[2]], pch=21, bg=popCol, cex=1.2)
+				
+			# }
+			
+			# # title
+			# usr <- par('usr')
+			# x <- usr[1]
+			# y <- usr[4] - 0.02 * (usr[4] - usr[3])
+			# underscore <- regexpr(snp, pattern='_')
+			# snpName <- substr(snp, 5, underscore[1] - 1)
+			# snpName <- paste0('b) Mean prediction for SNP ', snpName, ' under RCP8.5 for 2070s')
+			# text(x, y, labels=snpName, xpd=NA, cex=1.1, pos=4, font=2)
+			
+			# # legend
+			# refBase <- snpModel$refBase
+			# altBase <- snpModel$altBase
+		
+			# labs <- c(
+				# paste0('100% ', refBase),
+				# paste0('50% ', refBase, ' / 50% ', altBase),
+				# paste0('100% ', altBase)
+			# )
+		
+			# legendGrad(
+				# x='bottom',
+				# y = NULL,
+				# inset = -0.1,
+				# vert = FALSE,
+				# width = 0.999,
+				# height = 0.15,
+				# labels = labs,
+				# labAdj = -0.33,
+				# cex = 0.9,
+				# col = rev(cols),
+				# border = 'black',
+				# title = '',
+				# titleAdj = c(0.5, 0.9),
+				# adjX = c(0, 1),
+				# adjY = c(0.8, 1),
+				# boxBg = par('bg'),
+				# boxBorder = NULL,
+				# swatches = NULL
+			# )	
+
+			# ### uncertainty
+			# ###############
+			
+			# plot(futUncertain, col=theseColsUncert, breaks=0:maxPredUncert, legend=FALSE, axes=FALSE, box=FALSE)
+			# plot(nam1, add=TRUE)
+			
+			# # add populations
+			# points(x=snpByPop[ , ll[1]], y=snpByPop[ , ll[2]], pch=1, cex=1.2)
+			
+			# # title
+			# usr <- par('usr')
+			# x <- usr[1]
+			# y <- usr[4] - 0.02 * (usr[4] - usr[3])
+			# underscore <- regexpr(snp, pattern='_')
+			# snpName <- paste('c) Uncertainty in allelic frequencies under RCP8.5 for 2070s')
+			# text(x, y, labels=snpName, xpd=NA, cex=1.1, pos=4, font=2)
+			
+			# # legend
+			# labs <- paste0(c(0, round(maxUncert / 2, 1), maxUncert), '%')
+		
+			# legendGrad(
+				# x='bottom',
+				# y = NULL,
+				# inset = -0.1,
+				# vert = FALSE,
+				# width = 0.999,
+				# height = 0.15,
+				# labels = labs,
+				# labAdj = -0.33,
+				# cex = 0.9,
+				# col = colsUncert,
+				# border = 'black',
+				# title = '',
+				# titleAdj = c(0.5, 0.9),
+				# adjX = c(0, 1),
+				# adjY = c(0.8, 1),
+				# boxBg = par('bg'),
+				# boxBorder = NULL,
+				# swatches = NULL
+			# )	
+
+			# title(sub=date(), cex.sub=0.5, line=-0.5, outer=TRUE)
+			
+		# dev.off()
+
+	# } # next allelle
 	
 
 
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 
 	
 # # say('##########################################')
