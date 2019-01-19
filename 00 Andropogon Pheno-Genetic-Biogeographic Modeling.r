@@ -33,6 +33,7 @@
 ### EDA of SNP model performance and predictor importance ###
 ### identify alleles most likely affected by climate ###
 ### make maps of alleles most likely responding to climate ###
+### make map of allelic diversity ###
 
 
 # ### copy and process raw response data ###
@@ -88,6 +89,8 @@
 
 	rcps <- c('4pt5', '8pt5')
 	
+	buffSize <- 200 # size of buffer of focal region for plotting in km
+
 #################
 ### functions ###
 #################
@@ -233,6 +236,45 @@
 		
 		list(nice=nice, name=name, unit=unit)
 		
+	}
+
+	# aggregate individual-level site data to population level
+	aggPhenoGenoByPop <- function(phenoGeno, sp=TRUE) {
+		
+		# phenoGeno		data frame of individual-level geno/pheno data
+		# sp			TRUE: output is SPatialPointsDataFrame
+		
+		phenoGenoPops <- aggregate(phenoGeno[ , c('population', ll)], by=list(phenoGeno$population), mean)
+		phenoGenoPops$population <- NULL
+		names(phenoGenoPops)[1] <- 'population'
+		nas <- naRows(phenoGenoPops[ , ll])
+		if (length(nas) > 0) phenoGenoPops <- phenoGenoPops[-nas, ]
+		
+		if (sp) phenoGenoPops <- SpatialPointsDataFrame(phenoGenoPops[ , ll], data=phenoGenoPops, proj4string=getCRS('wgs84', TRUE))
+		phenoGenoPops
+		
+	}
+		
+	# get polygon to represent extent of plotting region
+	getPlotFocus <- function(buffSize) {
+	
+		# buffSize	size of buffer around populations in km
+		
+		load('./Data/Phenotypic & Genotypic Data/02 Phenotypic & Genotypic Data - Environmental Data & PCA.RData')
+		
+		# aggregate geno/pheno data to population
+		phenoGenoPops <- aggPhenoGenoByPop(phenoGeno, sp=TRUE)
+		
+		# get focal region extent
+		phenoGenoPopsEa <- sp::spTransform(phenoGenoPops, getCRS('albersNA', TRUE))
+		focus <- gBuffer(phenoGenoPopsEa, width=buffSize * 1000)
+		focus <- sp::spTransform(focus, getCRS('wgs84', TRUE))
+		focus <- extent(focus)
+		focus <- as(focus, 'SpatialPolygons')
+		projection(focus) <- getCRS('wgs84')
+	
+		focus
+	
 	}
 
 # say('########################################')
@@ -567,13 +609,7 @@
 	# load('./Data/Andropogon Occurrences/!15 Andropogon and Poaceae Records on GADM with BIOCLIM Variables and PCA.RData')
 
 	# # aggregate geno/pheno data to population
-	# phenoGenoPops <- aggregate(phenoGeno[ , c('population', ll)], by=list(phenoGeno$population), mean)
-	# phenoGenoPops$population <- NULL
-	# names(phenoGenoPops)[1] <- 'population'
-	# nas <- naRows(phenoGenoPops[ , ll])
-	# if (length(nas) > 0) phenoGenoPops <- phenoGenoPops[-nas, ]
-	
-	# phenoGenoPops <- SpatialPointsDataFrame(phenoGenoPops[ , ll], data=phenoGenoPops, proj4string=getCRS('wgs84', TRUE))
+	# phenoGenoPops <- aggPhenoGenoByPop(phenoGeno, sp=TRUE)
 	
 	# overs <- over(ag, phenoGenoPops)
 	# ag@data <- insertCol(overs, into=ag@data, at='bio01')
@@ -611,7 +647,7 @@
 
 	# # generalization
 	# rcp <- '8pt5'
-	# buffSize <- 400 # size of buffer around populations to crop LOPOD shape (in km)
+	# lopodBuffSize <- 400 # size of buffer around populations to crop LOPOD shape (in km)
 
 	# # load('./Models - Species/bayesLopod/Prediction - bayesLopod with Constant Detection.Rdata')
 	# load('./Models - Species/bayesLopod/Prediction - bayesLopod with Variable Detection.Rdata')
@@ -620,18 +656,7 @@
 	
 	# # crop to Midwest
 	# load('./Data/Phenotypic & Genotypic Data/02 Phenotypic & Genotypic Data - Environmental Data & PCA.RData')
-	# phenoGenoPops <- aggregate(phenoGeno[ , c('population', ll)], by=list(phenoGeno$population), mean)
-	# phenoGenoPops$population <- NULL
-	# names(phenoGenoPops)[1] <- 'population'
-	# nas <- naRows(phenoGenoPops[ , ll])
-	# if (length(nas) > 0) phenoGenoPops <- phenoGenoPops[-nas, ]
-	# phenoGenoPops <- SpatialPointsDataFrame(phenoGenoPops[ , ll], data=phenoGenoPops, proj4string=getCRS('wgs84', TRUE))
-	# phenoGenoPopsEa <- sp::spTransform(phenoGenoPops, getCRS('albersNA', TRUE))
-	# focus <- gBuffer(phenoGenoPopsEa, width=buffSize * 1000)
-	# focus <- sp::spTransform(focus, getCRS('wgs84', TRUE))
-	# focus <- extent(focus)
-	# focus <- as(focus, 'SpatialPolygons')
-	# projection(focus) <- getCRS('wgs84')
+	# focus <- getPlotFocus(buffSize=buffSize)
 	# lopodPredictVarP <- crop(lopodPredictVarP, focus)	
 	
 	# # setup for modeling
@@ -670,7 +695,6 @@
 # say('####################################################')
 	
 	# # generalization
-	# buffSize <- 200 # size of buffer of focal region for plotting in km
 	# thold <- 0.90 # threshold psi above which to highlight a county
 	
 	# # load geno/pheno and GIS data
@@ -679,21 +703,8 @@
 	# load('./Models - Species/bayesLopod/Prediction - bayesLopod with Variable Detection with Future Predictions.RData')
 
 	# # aggregate geno/pheno data to population
-	# phenoGenoPops <- aggregate(phenoGeno[ , c('population', ll)], by=list(phenoGeno$population), mean)
-	# phenoGenoPops$population <- NULL
-	# names(phenoGenoPops)[1] <- 'population'
-	# nas <- naRows(phenoGenoPops[ , ll])
-	# if (length(nas) > 0) phenoGenoPops <- phenoGenoPops[-nas, ]
-	
-	# phenoGenoPops <- SpatialPointsDataFrame(phenoGenoPops[ , ll], data=phenoGenoPops, proj4string=getCRS('wgs84', TRUE))
-	
-	# # get focal region extent
-	# phenoGenoPopsEa <- sp::spTransform(phenoGenoPops, getCRS('albersNA', TRUE))
-	# focus <- gBuffer(phenoGenoPopsEa, width=buffSize * 1000)
-	# focus <- sp::spTransform(focus, getCRS('wgs84', TRUE))
-	# focus <- extent(focus)
-	# focus <- as(focus, 'SpatialPolygons')
-	# projection(focus) <- getCRS('wgs84')
+	# phenoGenoPops <- aggPhenoGenoByPop(phenoGeno, sp=TRUE)
+	# focus <- getPlotFocus(buffSize=buffSize)
 	
 	# nam1 <- crop(nam1, focus)
 	# lopodPredictVarP <- crop(lopodPredictVarP, focus)
@@ -708,7 +719,7 @@
 	# plot
 	# png(paste0('./Figures & Tables/Species Model - Maps/bayesLopod x Linear Model - Present and Future Predictions.png'), width=2 * 1200, height=1000, res=300)
 
-		# par(mfrow=c(1, 2), oma=0.1 * c(1, 8, 1, 32), mai=0.1 * c(1, 1, 1, 1), mar=rep(0, 4))
+		# par(mfrow=c(1, 2), oma=0.1 * c(1, 4, 1, 26), mai=0 * c(1, 1, 1, 1), mar=rep(0, 4))
 
 		# ### present
 		# ###########
@@ -720,13 +731,13 @@
 		# minPred <- min(preds, na.rm=TRUE)
 		# maxPred <- max(preds, na.rm=TRUE)
 
-		# highQuant <- quantile(lopodPredictVarP@data$psi_i, thold, na.rm=TRUE)
-		# whichCore <- which(lopodPredictVarP@data$psi_i >= highQuant)
-		# highPred <- lopodPredictVarP[whichCore, ]
-		# highPred <- gUnaryUnion(highPred)
+		# coreQuant <- quantile(lopodPredictVarP@data$psi_i, thold, na.rm=TRUE)
+		# whichCore <- which(lopodPredictVarP@data$psi_i >= coreQuant)
+		# rangeCore <- lopodPredictVarP[whichCore, ]
+		# rangeCore <- gUnaryUnion(rangeCore)
 		
 		# plot(lopodPredictVarP, col=theseCols, breaks=minPred:maxPred, border=NA, axes=FALSE, box=FALSE)
-		# plot(highPred, col='darkgreen', border='black', add=TRUE)
+		# plot(rangeCore, col='darkgreen', border='black', add=TRUE)
 		# plot(nam1, add=TRUE)
 		
 		# cents <- gCentroid(lopodPredictVarP, byid=TRUE)
@@ -736,9 +747,9 @@
 		# # title
 		# usr <- par('usr')
 		# x <- usr[1]
-		# y <- usr[4] - 0.07 * (usr[4] - usr[3])
+		# y <- usr[4] - 0.08 * (usr[4] - usr[3])
 		# name <- paste0('a) Current climate')
-		# text(x, y, labels=name, xpd=NA, cex=0.8, pos=4, font=2)
+		# text(x, y, labels=name, xpd=NA, cex=0.7, pos=4, font=1)
 
 		# ### future
 		# ###########
@@ -750,12 +761,12 @@
 		# minPred <- min(preds, na.rm=TRUE)
 		# maxPred <- max(preds, na.rm=TRUE)
 		
-		# whichCore <- which(lopodPredictVarP@data$psi_ensembleGcm_rcp85_2070s >= highQuant)
-		# highPred <- lopodPredictVarP[whichCore, ]
-		# highPred <- gUnaryUnion(highPred)
+		# whichCore <- which(lopodPredictVarP@data$psi_ensembleGcm_rcp85_2070s >= coreQuant)
+		# rangeCore <- lopodPredictVarP[whichCore, ]
+		# rangeCore <- gUnaryUnion(rangeCore)
 		
 		# plot(lopodPredictVarP, col=theseCols, breaks=minPred:maxPred, border=NA, axes=FALSE, box=FALSE)
-		# plot(highPred, col='darkgreen', border='black', add=TRUE)
+		# plot(rangeCore, col='darkgreen', border='black', add=TRUE)
 		# plot(nam1, add=TRUE)
 		
 		# cents <- gCentroid(lopodPredictVarP, byid=TRUE)
@@ -765,33 +776,31 @@
 		# # title
 		# usr <- par('usr')
 		# x <- usr[1]
-		# y <- usr[4] - 0.07 * (usr[4] - usr[3])
+		# y <- usr[4] - 0.08 * (usr[4] - usr[3])
 		# name <- paste0('b) Future climate in 2070s under RCP8.5')
-		# text(x, y, labels=name, xpd=NA, cex=0.8, pos=4, font=2)
+		# text(x, y, labels=name, xpd=NA, cex=0.7, pos=4, font=1)
 		
 		# # legend
-		# labs <- c('0', '0.25', '0.50', '0.75', sprintf('%.2f', round(highQuant, 2)))
+		# labs <- c('0', '0.25', '0.50', '0.75', sprintf('%.2f', round(coreQuant, 2)))
 
-		# perc <- 100 * (1 - thold)
-		
 		# legendGrad(
 			# x='right',
-			# inset = -0.1,
+			# inset = -0.10,
 			# vert = TRUE,
 			# width = 0.12,
 			# height = 1,
 			# labels = labs,
-			# labAdj = 0.55,
-			# cex = 0.7,
+			# labAdj = 0.3,
+			# cex = 0.62,
 			# col = c('white', 'green4'),
 			# border = 'black',
 			# title = 'Occupancy',
-			# titleAdj = c(0.5, 0.925),
-			# adjX = c(0, 0.4),
-			# adjY = c(0.115, 0.77),
+			# titleAdj = c(0.5, 0.865),
+			# adjX = c(0, 0.3),
+			# adjY = c(0.115, 0.72),
 			# boxBg = par('bg'),
 			# boxBorder = NULL,
-			# swatches = list(list(swatchAdjY=c(0.83, 0.885), col='darkgreen', border='black', labels=paste0('Top\n', perc, '%')))
+			# swatches = list(list(swatchAdjY=c(0.77, 0.815), col='darkgreen', border='black', labels='Range\ncore'))
 		# )	
 
 		# title(sub=date(), cex.sub=0.35, line=-1, outer=TRUE)
@@ -1266,7 +1275,6 @@
 # say('##############################################################')
 
 	# # generalization
-	# buffSize <- 200 # size of buffer of focal region for plotting in km
 	# rcp <- '8pt5' # RCP
 	
 	# bestAlleles <- read.csv('./Figures & Tables/SNP Models - Summaries/SNPs Most Sensitive to Climate.csv')
@@ -1279,21 +1287,8 @@
 	# load('./Models - Species/bayesLopod/Prediction - bayesLopod with Variable Detection with Future Predictions.Rdata')
 
 	# # aggregate geno/pheno data to population
-	# phenoGenoPops <- aggregate(phenoGeno[ , c('population', ll)], by=list(phenoGeno$population), mean)
-	# phenoGenoPops$population <- NULL
-	# names(phenoGenoPops)[1] <- 'population'
-	# nas <- naRows(phenoGenoPops[ , ll])
-	# if (length(nas) > 0) phenoGenoPops <- phenoGenoPops[-nas, ]
-	
-	# phenoGenoPops <- SpatialPointsDataFrame(phenoGenoPops[ , ll], data=phenoGenoPops, proj4string=getCRS('wgs84', TRUE))
-	
-	# # get focal region extent
-	# phenoGenoPopsEa <- sp::spTransform(phenoGenoPops, getCRS('albersNA', TRUE))
-	# focus <- gBuffer(phenoGenoPopsEa, width=buffSize * 1000)
-	# focus <- sp::spTransform(focus, getCRS('wgs84', TRUE))
-	# focus <- extent(focus)
-	# focus <- as(focus, 'SpatialPolygons')
-	# projection(focus) <- getCRS('wgs84')
+	# phenoGenoPops <- aggPhenoGenoByPop
+	# focus <- getPlotFocus(buffSize=buffSize)
 	
 	# sqEnv <- crop(sqEnv, focus)
 	# futEnv <- lapply(futEnv, crop, y=focus)
@@ -1568,6 +1563,198 @@
 		# dev.off()
 
 	# } # next allelle
+
+# say('#####################################')
+# say('### make map of allelic diversity ###')
+# say('#####################################')
+
+	# # generalization
+	# rcp <- '8pt5' # RCP
+	# thold <- 0.9 # topmost quantile of psi above which is designated as range "core"
+	
+	# bestAlleles <- read.csv('./Figures & Tables/SNP Models - Summaries/SNPs Most Sensitive to Climate.csv')
+
+	# # load geno/pheno and GIS data
+	# load('./Study Region/North America Level 1 Sans Alaska.RData')
+	# load('./Data/Phenotypic & Genotypic Data/02 Phenotypic & Genotypic Data - Environmental Data & PCA.RData')
+	# sqEnv <- stackCurrentEnv(predictors)
+	# futEnv <- stackFutureEnv(predictors, rcp=rcp)
+	# load('./Models - Species/bayesLopod/Prediction - bayesLopod with Variable Detection with Future Predictions.Rdata')
+
+	# # aggregate geno/pheno data to population
+	# phenoGenoPops <- aggPhenoGenoByPop(phenoGeno, sp=TRUE)
+
+	# # crop to focal region extent
+	# focus <- getPlotFocus(buffSize=buffSize)
+	# sqEnv <- crop(sqEnv, focus)
+	# futEnv <- lapply(futEnv, crop, y=focus)
+	# nam1 <- crop(nam1, focus)
+	# lopodPredictVarP <- crop(lopodPredictVarP, focus)
+	
+	# ### by SNP
+	# for (countSnp in 1:nrow(bestAlleles)) {
+	# # for (countSnp in 1:5) {
+	
+		# snp <- bestAlleles$snp[countSnp]
+		# say(snp)
+	
+		# # load model
+		# load(paste0('./Models - SNPs/Model for SNP ', snp, '.RData'))
+	
+		# # rescale
+		# predictorMeans <- snpModel$predictorMeans
+		# predictorSds <- snpModel$predictorSds
+		
+		# thisSqEnv <- sqEnv
+		# layerNames <- names(thisSqEnv)
+		# for (pred in predictors) {
+			# thisSqEnv[[pred]] <- (thisSqEnv[[pred]] - predictorMeans[[pred]]) / predictorSds[[pred]]
+		# }
+		# names(thisSqEnv) <- layerNames
+	
+		# thisFutEnv <- futEnv
+		# for (gcm in names(thisFutEnv)) {
+			# for (pred in predictors) {
+				# thisFutEnv[[gcm]][[pred]] <- (thisFutEnv[[gcm]][[pred]] - predictorMeans[[pred]]) / predictorSds[[pred]]
+			# }
+			# names(thisFutEnv[[gcm]]) <- layerNames
+		# }
+	
+		# ### current predict
+		# thisSqPred <- predict(thisSqEnv, snpModel$allSitesModel, type='response')
+		# thisSqDiversity <- thisSqPred * (1 - thisSqPred)
+		# names(thisSqDiversity) <- snp
+	
+		# ### future predict
+		# futPredictionList <- lapply(thisFutEnv, predict, model=snpModel$allSitesModel, type='response')
+		# thisFutPred <- futPredictionList[[1]]
+		# for (i in 2:length(futPredictionList)) thisFutPred <- stack(thisFutPred, futPredictionList[[i]])
+		# names(thisFutPred) <- names(thisFutPred)
+		# thisFutPred <- mean(thisFutPred)
+		# thisFutDiversity <- thisFutPred * (1 - thisFutPred)
+		# names(thisFutDiversity) <- snp
+	
+		# # get allelic frequencies
+		# snpByPop <- snpModel$snpByPop
+		# freqRef <- snpByPop$refAllele / rowSums(snpByPop[ , c('refAllele', 'altAllele')])
+		# freqAlt <- 1 - freqRef
+		# thisObsDiversity <- freqRef * freqAlt
+		
+		# if (countSnp == 1) {
+			# sqDiversity <- thisSqDiversity
+			# futDiversity <- thisFutDiversity
+			# obsDiversity <- matrix(thisObsDiversity, ncol=1)
+			# colnames(obsDiversity) <- snp
+		# } else {
+			# sqDiversity <- stack(sqDiversity, thisSqDiversity)
+			# futDiversity <- stack(futDiversity, thisFutDiversity)
+			# obsDiversity <- cbind(obsDiversity, matrix(thisObsDiversity, ncol=1))
+			# colnames(obsDiversity)[countSnp] <- snp
+		# }
+	
+	# } # next SNP
+	
+	# ### calculate diversity
+	# #######################
+	
+	# sqDiversity <- sum(sqDiversity / 0.5^2) / nlayers(sqDiversity)
+	# futDiversity <- sum(futDiversity / 0.5^2) / nlayers(futDiversity)
+	
+	# obsDiversity <- rowSums(obsDiversity / 0.5^2) / ncol(obsDiversity)
+	
+	# ### plot
+	# ########
+	
+	# # colors
+	# cols <- cividis(101)
+		
+	# dirCreate('./Figures & Tables/SNP Models - Genetic Diversity')
+
+	# coreQuant <- quantile(lopodPredictVarP@data$psi_i, thold, na.rm=TRUE)
+	
+	# # plot
+	# png(paste0('./Figures & Tables/SNP Models - Genetic Diversity/Genetic Diversity.png'), width=2 * 1200, height=1000, res=300)
+
+		# par(mfrow=c(1, 2), oma=0.1 * c(1, 4, 1, 26), mai=0 * c(1, 1, 1, 1), mar=rep(0, 4))
+
+		# ### present
+		# ###########
+
+		# # diversity
+		# plot(sqDiversity, col=cols, breaks=seq(0, 1, by=0.01), legend=FALSE, axes=FALSE, box=FALSE)
+		# plot(nam1, add=TRUE)
+
+		# # range core
+		# coreQuant <- quantile(lopodPredictVarP$psi_i, thold, na.rm=TRUE)
+		# whichCore <- which(lopodPredictVarP@data$psi_i >= coreQuant)
+		# rangeCore <- lopodPredictVarP[whichCore, ]
+		# rangeCore <- gUnaryUnion(rangeCore)
+		# plot(rangeCore, col=NA, border='white', lwd=1, add=TRUE)
+
+		# # fade by probability of occurrence
+		# plot(lopodPredictVarP, col=alpha('white', 1 - lopodPredictVarP$psi_i), border=NA, add=TRUE)
+		
+		# # add populations
+		# popCol <- cols[round(100 * obsDiversity)]
+		# points(phenoGenoPops, pch=21, bg=popCol, cex=1.2)
+		
+		# # title
+		# usr <- par('usr')
+		# x <- usr[1]
+		# y <- usr[4] - 0.1 * (usr[4] - usr[3])
+		# text(x, y, labels='a) Current climate', xpd=NA, cex=0.7, pos=4, font=2)
+		
+		# ### future
+		# ###########
+
+		# # diversity
+		# plot(futDiversity, col=cols, breaks=seq(0, 1, by=0.01), legend=FALSE, axes=FALSE, box=FALSE)
+		# plot(nam1, add=TRUE)
+
+		# # range core
+		# whichCore <- which(lopodPredictVarP@data$psi_ensembleGcm_rcp85_2070s >= coreQuant)
+		# rangeCore <- lopodPredictVarP[whichCore, ]
+		# rangeCore <- gUnaryUnion(rangeCore)
+		# plot(rangeCore, col=NA, border='white', lwd=1.5, add=TRUE)
+
+		# # fade by probability of occurrence
+		# plot(lopodPredictVarP, col=alpha('white', 1 - lopodPredictVarP$psi_ensembleGcm_rcp85_2070s), border=NA, add=TRUE)
+		
+		# # add populations
+		# popCol <- cols[round(100 * obsDiversity)]
+		# points(phenoGenoPops, pch=21, bg=popCol, cex=1.2)
+
+		# # title
+		# usr <- par('usr')
+		# x <- usr[1]
+		# y <- usr[4] - 0.1 * (usr[4] - usr[3])
+		# text(x, y, labels='b) 2070s RCP8.5', xpd=NA, cex=0.7, pos=4, font=2)
+		
+		# # legend
+		# legendGrad(
+			# x='right',
+			# inset = -0.17,
+			# vert = TRUE,
+			# width = 0.12,
+			# height = 1,
+			# labels = c(0, 0.25, 0.5, 0.75, 1),
+			# labAdj = 0.35,
+			# cex = 0.65,
+			# col = cols,
+			# border = 'black',
+			# title = 'Diversity',
+			# titleAdj = c(0.5, 0.855),
+			# adjX = c(0, 0.35),
+			# # adjY = c(0.23, 0.775),
+			# adjY = c(0.13, 0.775),
+			# boxBg = par('bg'),
+			# boxBorder = NULL
+			# # swatches = list(list(swatchAdjY=c(0.13, 0.175), col=NA, border='orange', lwd=1.5, labels='Range\ncore'))
+		# )	
+
+		# title(sub=date(), cex.sub=0.35, line=-1, outer=TRUE)
+		
+	# dev.off()
 	
 
 
