@@ -1,6 +1,6 @@
 ### ANDROPOGON PHENO-GENETIC-BIOGEOGRAPHICAL MODELING
 ### Adam B Smith | Missouri Botanical Garden | 2018
-### source('C:/Ecology/Drive/Research/Andropogon/Andropogon - Pheno-geno Modeling/Code/00 Andropogon Pheno-Genetic-Biogeographic Modeling.r')
+### source('C:/Ecology/Drive/Research/Andropogon/Andropogon - SNP Modeling/Code/00 Andropogon Pheno-Genetic-Biogeographic Modeling.r')
 
 	print(Sys.time())
 	rm(list=ls())
