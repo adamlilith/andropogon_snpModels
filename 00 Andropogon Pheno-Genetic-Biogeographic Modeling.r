@@ -57,7 +57,7 @@
 	library(raster)
 	library(dismo)
 	# library(bayesLopod)
-	library(gjam)
+	# library(gjam)
 	library(MuMIn)
 
 	library(omnibus)
@@ -73,7 +73,7 @@
 	options(stringsAsFactors=FALSE)
 	rasterOptions(format='GTiff', overwrite=TRUE)
 
-	setwd('C:/ecology/Drive/Research/Andropogon/Andropogon - Pheno-geno Modeling')
+	setwd('C:/Ecology/Drive/Research/Andropogon/Andropogon - SNP Modeling')
 
 #################
 ### constants ###
@@ -625,12 +625,13 @@
 	
 	# load('./Data/Andropogon Occurrences/!15 Andropogon and Poaceae Records on GADM with BIOCLIM Variables and PCA.RData')
 	
-	# ag <- ag[-which(is.na(ag$poaceaeRec)), ]
+	# ag <- ag[-which(is.na(ag$poaceaeRecords)), ]
 	
-	# gadmLopod <- shapeLopodData(ag, fieldN='poaceaeRec', fieldY='agRecordsQual1to3', Adjacency=TRUE, keepFields=TRUE)
+	# gadmLopod <- shapeLopodData(ag, fieldN='poaceaeRecords', fieldY='agRecordsQual1to3', Adjacency=TRUE, keepFields=TRUE)
 	
 	# modelVarP <- modelLopod(gadmLopod, varP=TRUE, CAR=TRUE)
 	# modelConstantP <- modelLopod(gadmLopod, varP=FALSE, CAR=TRUE)
+	# # # modelConstantPNoCar <- modelLopod(gadmLopod, varP=FALSE, CAR=FALSE)
 	
 	# save(lopodVarP, file=paste0(outDir, '/Model - bayesLopod with Variable Detection.RData'))
 	# save(lopodConstantP, file=paste0(outDir, '/Model - bayesLopod with Constant Detection.RData'))
